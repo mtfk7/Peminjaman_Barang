@@ -113,9 +113,13 @@
                         @csrf
                         <input type="hidden" name="barang_id" value="{{ $item['id'] }}">
                         <input type="hidden" name="jenis_barang" value="{{ $item['type'] }}">
-                        <input type="hidden" name="jumlah" value="1">
-                        <button type="submit" 
-                                class="text-white px-4 py-2 rounded-lg text-sm font-medium transition shadow-md hover:shadow-lg" style="background-color: #375e2f;">
+                        <!-- jumlah akan diisi dari modal -->
+                        <button type="button"
+                                class="text-white px-4 py-2 rounded-lg text-sm font-medium transition shadow-md hover:shadow-lg" style="background-color: #375e2f;"
+                                data-name="{{ $item['name'] }}"
+                                data-stock="{{ $item['stock'] }}"
+                                data-satuan="{{ $item['satuan'] }}"
+                                onclick="openQuantityModal(this)">
                             <i class="fas fa-cart-plus mr-1"></i>Add
                         </button>
                     </form>
@@ -142,6 +146,28 @@
     </div>
     <p class="text-lg font-semibold mb-2">No items found</p>
     <p class="text-sm text-gray-400">Try adjusting your filters</p>
+</div>
+
+<!-- Quantity Modal -->
+<div id="quantityModal" class="fixed inset-0 bg-black/40 hidden z-50 flex items-center justify-center" onclick="closeQuantityModal()">
+  <div class="bg-white rounded-2xl p-4 shadow-xl w-11/12 max-w-md" onclick="event.stopPropagation()">
+    <div class="flex items-center justify-between mb-2">
+      <h3 class="text-base font-semibold text-gray-800">Masukkan jumlah</h3>
+      <button class="text-gray-500 hover:text-gray-700" onclick="closeQuantityModal()"><i class="fas fa-times"></i></button>
+    </div>
+    <div class="mb-3">
+      <p class="text-sm text-gray-700"><span id="qtyItemName" class="font-semibold"></span></p>
+      <p class="text-xs text-gray-500">Stok tersedia: <span id="qtyStockInfo"></span></p>
+    </div>
+    <div class="mb-3">
+      <input id="qtyInput" type="number" min="1" value="1" class="w-full border rounded px-3 py-2" />
+      <p id="qtyError" class="text-xs text-red-600 mt-1 hidden">Jumlah tidak valid. Pastikan antara 1 dan stok tersedia.</p>
+    </div>
+    <div class="flex gap-2">
+      <button class="flex-1 bg-gray-200 text-gray-800 py-2 rounded-md font-medium" onclick="closeQuantityModal()">Batal</button>
+      <button class="flex-1 text-white py-2 rounded-md font-medium" style="background-color: #375e2f;" onclick="confirmQuantity()">Konfirmasi</button>
+    </div>
+  </div>
 </div>
 @endsection
 
@@ -273,6 +299,53 @@
         // Show/hide empty state
         document.getElementById('emptyState').classList.toggle('hidden', visibleCount > 0);
         document.getElementById('itemsList').classList.toggle('hidden', visibleCount === 0);
+    }
+
+    // ===== Quantity Modal Logic =====
+    let targetForm = null;
+    function openQuantityModal(btn) {
+        targetForm = btn.closest('form');
+        const name = btn.dataset.name || '';
+        const satuan = btn.dataset.satuan || '';
+        const stock = parseInt(btn.dataset.stock || '0', 10);
+        const qtyInput = document.getElementById('qtyInput');
+        document.getElementById('qtyItemName').textContent = name;
+        document.getElementById('qtyStockInfo').textContent = `${stock} ${satuan}`;
+        qtyInput.min = 1;
+        qtyInput.max = stock > 0 ? stock : 1;
+        qtyInput.value = 1;
+        document.getElementById('qtyError').classList.add('hidden');
+        document.getElementById('quantityModal').classList.remove('hidden');
+    }
+
+    function closeQuantityModal() {
+        document.getElementById('quantityModal').classList.add('hidden');
+        targetForm = null;
+    }
+
+    function confirmQuantity() {
+        const qtyInput = document.getElementById('qtyInput');
+        const val = parseInt(qtyInput.value, 10);
+        const min = parseInt(qtyInput.min, 10);
+        const max = parseInt(qtyInput.max, 10);
+        if (!val || val < min || val > max) {
+            document.getElementById('qtyError').classList.remove('hidden');
+            return;
+        }
+        if (!targetForm) {
+            closeQuantityModal();
+            return;
+        }
+        let jumlahInput = targetForm.querySelector('input[name="jumlah"]');
+        if (!jumlahInput) {
+            jumlahInput = document.createElement('input');
+            jumlahInput.type = 'hidden';
+            jumlahInput.name = 'jumlah';
+            targetForm.appendChild(jumlahInput);
+        }
+        jumlahInput.value = val;
+        targetForm.submit();
+        closeQuantityModal();
     }
 </script>
 @endsection
